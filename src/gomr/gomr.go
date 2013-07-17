@@ -14,11 +14,11 @@
 //
 // 3. An input reader function that returns one item to be processed (e.g. a document) per each call
 //		Read() (record interface{}, err error)
-//	if it returns an error, the reading stops
+// if it returns an error, the reading stops
 //
-//	4. An output handler function of the form
+// 4. An output handler function of the form
 //		HandleOutput(output chan Record)
-//	This function should consume the output of the job from the output channel completely
+// This function should consume the output of the job from the output channel completely
 //
 package gomr
 
