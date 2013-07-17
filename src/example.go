@@ -26,10 +26,6 @@ func (m *MyMapReducer) Read() (record interface{}, err error) {
 	if !ok {
 		return nil, fmt.Errorf("End reaced...")
 	}
-	if m.offset%1000 == 0 {
-		_, _ = os.Stdout.WriteString(".")
-
-	}
 
 	//we copy so we won't use the same memory buffer for all goroutines
 

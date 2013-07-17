@@ -24,8 +24,8 @@ package gomr
 
 import (
 	"github.com/dvirsky/go-pylog/logging"
-
 	"sync"
+	"time"
 )
 
 type Record struct {
@@ -83,6 +83,7 @@ func NewMapReduceJob(mr MapReducer, numReducers int, numMappers int) *MapReduceJ
 //Read the input from the user's reader and push it to the input chan
 func (mr *MapReduceJob) readInput() {
 
+	tracker := progressTracker(2, "docs")
 	logging.Info("Reading input")
 	for {
 		record, err := (*mr.mapReducer).Read()
@@ -92,8 +93,10 @@ func (mr *MapReduceJob) readInput() {
 			break
 		}
 		mr.inputChan <- record
+		tracker <- 1
 
 	}
+	close(tracker)
 	close(mr.inputChan)
 	logging.Info("Finished reading input!")
 }
@@ -133,12 +136,40 @@ func (mr *MapReduceJob) runMappers() {
 func (mr *MapReduceJob) collectMappersOutput() {
 
 	logging.Info("Collecting mappers output")
+
+	tracker := progressTracker(5, "items")
 	for kv := range mr.mappersOutputChan {
 		mr.aggregate[kv.Key] = append(mr.aggregate[kv.Key], kv.Val)
+		tracker <- 1
 	}
 
+	close(tracker)
 	logging.Info("FINISHED Collecting mappers output")
 
+}
+
+//generic progress tracker -returns a channel that we push progress count on.
+// NOTE: you must close the channel on finish
+func progressTracker(interval int, itemName string) chan int {
+
+	ret := make(chan int)
+
+	go func() {
+		p, i := 0, 0
+		st := time.Now()
+		for x := range ret {
+			i += x
+
+			if time.Since(st) > time.Duration(interval)*time.Second {
+				logging.Info("Mapped %d %s, Progress rate: %.02f %s/sec", i, itemName, float32(1000000000*(i-p))/float32(time.Since(st)), itemName)
+				st = time.Now()
+				p = i
+			}
+		}
+
+	}()
+
+	return ret
 }
 
 //run the reducers
@@ -160,12 +191,14 @@ func (mr *MapReduceJob) runReducers() {
 		}()
 	}
 
+	tracker := progressTracker(5, "items")
 	//push the output from the aggregate dictionary to the reducers' input channel
 	for k := range mr.aggregate {
 
 		mr.reducersInputChan <- Record{k, mr.aggregate[k]}
-
+		tracker <- 1
 	}
+	close(tracker)
 
 	//we close the input channel, causing all reduce loops to exit
 	close(mr.reducersInputChan)
