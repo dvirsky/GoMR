@@ -112,7 +112,7 @@ func (mr *MapReduceJob) runMappers() {
 		//this way we can wait for the mappers to finish safely
 		mappersGroup.Add(1)
 		logging.Info("Starting mapper %d", i)
-		go func() {
+		go func(i int) {
 
 			for record := range mr.inputChan {
 
@@ -121,7 +121,7 @@ func (mr *MapReduceJob) runMappers() {
 
 			mappersGroup.Done()
 			logging.Info("Mapper %d done", i)
-		}()
+		}(i)
 	}
 
 	//wait for the mappers to finish up and then close their output channel
